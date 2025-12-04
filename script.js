@@ -3,6 +3,7 @@ let allMeals = [];
 let allProducts = [];
 let lastRecommendedDrinks = new Set(); // Для отслеживания последних рекомендованных напитков
 let drinkUsageCount = new Map(); // Для подсчета использования напитков
+let fixedDrinkSets = new Map(); // Для хранения фиксированных наборов напитков для каждого блюда
 
 // РАСШИРЕННАЯ онтологическая модель сочетаний с большим разнообразием
 const flavorProfiles = {
@@ -98,6 +99,17 @@ const flavorProfiles = {
         'маринованный': ['рислинг', 'совиньон блан', 'гевюрцтраминер']
     }
 };
+
+// Функция для создания фиксированного хэша на основе названия блюда
+function getFixedHashForMeal(mealName, seed = 42) {
+    let hash = 0;
+    for (let i = 0; i < mealName.length; i++) {
+        hash = ((hash << 5) - hash) + mealName.charCodeAt(i);
+        hash = hash & hash; // Преобразование в 32-битное целое
+    }
+    // Используем seed для детерминированного результата
+    return Math.abs((hash * seed) % 1000);
+}
 
 // Функция для переключения секций
 function showSection(sectionName) {
@@ -314,15 +326,18 @@ function initializeDrinkUsage() {
     });
 }
 
-// ФУНКЦИЯ ПОДБОРА НАПИТКОВ С МИНИМУМОМ ПОВТОРЕНИЙ
+// ФУНКЦИЯ ПОДБОРА НАПИТКОВ С ФИКСИРОВАННЫМИ НАБОРАМИ (2-3 напитка)
 function findDrinksForMeal(meal) {
     const mealName = meal.name.toLowerCase();
     const mealDescription = (meal.description || '').toLowerCase();
     const mealCategory = (meal.category || '').toLowerCase();
     
-    console.log('Поиск напитков для:', mealName);
+    console.log('Поиск фиксированных напитков для:', mealName);
     
-    // Шаг 1: Получаем ВСЕ возможные рекомендации по онтологии
+    // Шаг 1: Создаем уникальный хэш для блюда (детерминированный)
+    const mealHash = getFixedHashForMeal(mealName);
+    
+    // Шаг 2: Получаем ВСЕ возможные рекомендации по онтологии
     const allPossibleDrinks = new Set();
     
     // 1. Точные совпадения
@@ -348,7 +363,7 @@ function findDrinksForMeal(meal) {
     
     console.log('Все возможные напитки по онтологии:', Array.from(allPossibleDrinks));
     
-    // Шаг 2: Ищем напитки в базе данных, которые совпадают с рекомендациями
+    // Шаг 3: Ищем напитки в базе данных, которые совпадают с рекомендациями
     const matchingProducts = [];
     
     allPossibleDrinks.forEach(drinkName => {
@@ -359,14 +374,9 @@ function findDrinksForMeal(meal) {
             const productDescription = (product.description || '').toLowerCase();
             
             // Проверяем совпадение с названием напитка
-            const matches = productName.includes(drinkName) || 
-                           productCategory.includes(drinkName) ||
-                           productDescription.includes(drinkName);
-            
-            // Также проверяем, не был ли этот напиток недавно рекомендован
-            const recentlyUsed = lastRecommendedDrinks.has(productName);
-            
-            return matches && !recentlyUsed;
+            return productName.includes(drinkName) || 
+                   productCategory.includes(drinkName) ||
+                   productDescription.includes(drinkName);
         });
         
         matchingProducts.push(...foundProducts);
@@ -374,100 +384,107 @@ function findDrinksForMeal(meal) {
     
     console.log('Найдено совпадающих напитков:', matchingProducts.length);
     
-    // Шаг 3: Если есть совпадения, выбираем 2 наименее используемых
+    // Шаг 4: Выбираем фиксированный набор из 2-3 напитков на основе хэша
+    let selectedProducts = [];
+    
     if (matchingProducts.length > 0) {
-        // Сортируем по частоте использования (наименее используемые - в начале)
-        const sortedProducts = matchingProducts.sort((a, b) => {
-            const aKey = (a.name || '').toLowerCase();
-            const bKey = (b.name || '').toLowerCase();
-            const aUsage = drinkUsageCount.get(aKey) || 0;
-            const bUsage = drinkUsageCount.get(bKey) || 0;
-            return aUsage - bUsage;
+        // Сортируем для детерминированного выбора
+        matchingProducts.sort((a, b) => {
+            return (a.name || '').localeCompare(b.name || '');
         });
         
-        // Берем первые 2 уникальных напитка
-        const selectedProducts = [];
-        const selectedNames = new Set();
+        // Выбираем 2 или 3 напитка на основе хэша (фиксировано для блюда)
+        const numDrinks = 2 + (mealHash % 2); // 2 или 3 напитка (фиксировано для блюда)
+        const startIndex = mealHash % Math.max(1, matchingProducts.length - numDrinks);
         
-        for (const product of sortedProducts) {
-            if (selectedProducts.length >= 2) break;
-            
+        // Берем уникальные напитки
+        const selectedNames = new Set();
+        for (let i = startIndex; i < matchingProducts.length && selectedProducts.length < numDrinks; i++) {
+            const product = matchingProducts[i];
             const productName = (product.name || '').toLowerCase();
+            
             if (!selectedNames.has(productName)) {
                 selectedProducts.push(product);
                 selectedNames.add(productName);
-                
-                // Обновляем счетчик использования
-                const currentCount = drinkUsageCount.get(productName) || 0;
-                drinkUsageCount.set(productName, currentCount + 1);
-                
-                // Добавляем в список последних рекомендованных
-                lastRecommendedDrinks.add(productName);
             }
         }
         
-        // Ограничиваем размер lastRecommendedDrinks (храним только последние 10)
-        if (lastRecommendedDrinks.size > 10) {
-            const array = Array.from(lastRecommendedDrinks);
-            lastRecommendedDrinks = new Set(array.slice(-10));
+        // Если не набрали достаточно уникальных напитков
+        if (selectedProducts.length < numDrinks) {
+            // Добавляем дополнительные напитки
+            for (const product of matchingProducts) {
+                if (selectedProducts.length >= numDrinks) break;
+                
+                const productName = (product.name || '').toLowerCase();
+                if (!selectedNames.has(productName)) {
+                    selectedProducts.push(product);
+                    selectedNames.add(productName);
+                }
+            }
         }
-        
-        console.log('Выбраны напитки:', selectedProducts.map(p => p.name));
-        return selectedProducts;
     }
     
-    // Шаг 4: Если нет совпадений по онтологии, ищем альтернативные напитки
-    console.log('Совпадений по онтологии нет, ищем альтернативы');
-    
-    // Фильтруем напитки по категории блюда
-    let alternativeProducts = [];
-    
-    if (mealCategory) {
-        // Пытаемся найти напитки, подходящие по категории
-        alternativeProducts = allProducts.filter(product => {
-            // Пропускаем недавно использованные
+    // Шаг 5: Если совпадений мало или нет, берем подходящие по категории
+    if (selectedProducts.length < 2) {
+        // Ищем напитки по категории блюда
+        let alternativeProducts = allProducts.filter(product => {
+            // Проверяем, есть ли у напитка категория, подходящая к блюду
+            const productCategory = (product.category || '').toLowerCase();
             const productName = (product.name || '').toLowerCase();
-            return !lastRecommendedDrinks.has(productName);
+            
+            // Пропускаем уже выбранные
+            const alreadySelected = selectedProducts.some(p => 
+                (p.name || '').toLowerCase() === productName
+            );
+            
+            return !alreadySelected;
         });
-    }
-    
-    // Если альтернатив нет, берем случайные напитки
-    if (alternativeProducts.length === 0) {
-        alternativeProducts = [...allProducts];
-    }
-    
-    // Сортируем по частоте использования
-    alternativeProducts.sort((a, b) => {
-        const aKey = (a.name || '').toLowerCase();
-        const bKey = (b.name || '').toLowerCase();
-        const aUsage = drinkUsageCount.get(aKey) || 0;
-        const bUsage = drinkUsageCount.get(bKey) || 0;
-        return aUsage - bUsage;
-    });
-    
-    // Берем первые 2 наименее используемых
-    const finalProducts = [];
-    const finalNames = new Set();
-    
-    for (const product of alternativeProducts) {
-        if (finalProducts.length >= 2) break;
         
-        const productName = (product.name || '').toLowerCase();
-        if (!finalNames.has(productName)) {
-            finalProducts.push(product);
-            finalNames.add(productName);
+        // Сортируем для детерминированного выбора
+        alternativeProducts.sort((a, b) => {
+            return (a.name || '').localeCompare(b.name || '');
+        });
+        
+        // Дополняем до 2-3 напитков (используем тот же mealHash для согласованности)
+        const numNeeded = 2 + (mealHash % 2) - selectedProducts.length;
+        const altStartIndex = mealHash % Math.max(1, alternativeProducts.length - numNeeded);
+        
+        for (let i = altStartIndex; i < alternativeProducts.length && selectedProducts.length < (2 + (mealHash % 2)); i++) {
+            const product = alternativeProducts[i];
+            const productName = (product.name || '').toLowerCase();
+            const alreadySelected = selectedProducts.some(p => 
+                (p.name || '').toLowerCase() === productName
+            );
             
-            // Обновляем счетчик использования
-            const currentCount = drinkUsageCount.get(productName) || 0;
-            drinkUsageCount.set(productName, currentCount + 1);
-            
-            // Добавляем в список последних рекомендованных
-            lastRecommendedDrinks.add(productName);
+            if (!alreadySelected) {
+                selectedProducts.push(product);
+            }
         }
     }
     
-    console.log('Выбраны альтернативные напитки:', finalProducts.map(p => p.name));
-    return finalProducts;
+    // Шаг 6: Если все еще мало напитков, добавляем любые уникальные
+    if (selectedProducts.length < 2) {
+        // Добавляем любые уникальные напитки из базы
+        for (const product of allProducts) {
+            if (selectedProducts.length >= 2 + (mealHash % 2)) break;
+            
+            const productName = (product.name || '').toLowerCase();
+            const alreadySelected = selectedProducts.some(p => 
+                (p.name || '').toLowerCase() === productName
+            );
+            
+            if (!alreadySelected) {
+                selectedProducts.push(product);
+            }
+        }
+    }
+    
+    console.log(`Фиксированный набор из ${selectedProducts.length} напитков для "${mealName}":`, selectedProducts.map(p => p.name));
+    
+    // Сохраняем этот набор для данного блюда
+    fixedDrinkSets.set(mealName, selectedProducts);
+    
+    return selectedProducts;
 }
 
 // Документ загружен
@@ -566,8 +583,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         selectedMealInfo.classList.add('active');
         
-        // Ищем подходящие напитки с алгоритмом минимизации повторений
-        const recommendedDrinks = findDrinksForMeal(meal);
+        // Проверяем, есть ли уже фиксированный набор для этого блюда
+        const mealName = meal.name.toLowerCase();
+        let recommendedDrinks;
+        
+        if (fixedDrinkSets.has(mealName)) {
+            // Используем сохраненный фиксированный набор
+            recommendedDrinks = fixedDrinkSets.get(mealName);
+            console.log('Используем сохраненный фиксированный набор для', mealName);
+        } else {
+            // Генерируем новый фиксированный набор
+            recommendedDrinks = findDrinksForMeal(meal);
+        }
+        
         displayProducts(recommendedDrinks);
         
         document.querySelector('.section-title').textContent = 
@@ -588,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
             meal.name.toLowerCase().includes(query)
         ).slice(0, 5);
         
-        if (filtermedMeals.length > 0) {
+        if (filteredMeals.length > 0) {
             filteredMeals.forEach(meal => {
                 const suggestion = document.createElement('div');
                 suggestion.className = 'suggestion-item';
