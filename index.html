@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вкусные сочетания | Подбор напитков</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🍷</span>
+                    <span>Вкусные сочетания</span>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="#" onclick="showSection('main')">Главная</a></li>
+                        <li><a href="#" onclick="showSection('catalog')">Каталог блюд</a></li>
+                        <li><a href="#" onclick="showSection('about')">О проекте</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Главная секция -->
+        <section id="main-section">
+            <section class="hero">
+                <h1>Идеальный напиток для вашего блюда</h1>
+                <p>Наш сервис подберет наилучшее сочетание напитков к любому блюду на основе онтологической модели вкусовых сочетаний</p>
+            </section>
+
+            <section class="search-section">
+                <h2 class="section-title">Найдите ваше блюдо</h2>
+                <div class="search-container">
+                    <input type="text" class="search-input" id="meal-search" placeholder="Введите название блюда, например: лосось в сливочном соусе">
+                    <button class="btn btn-primary" id="search-btn">Найти напитки</button>
+                    <div class="search-suggestions" id="search-suggestions"></div>
+                </div>
+                
+                <div class="meal-info" id="selected-meal-info">
+                    <div class="meal-header">
+                        <div class="meal-image" id="selected-meal-image">
+                            <!-- Image will be inserted here -->
+                        </div>
+                        <div class="meal-details">
+                            <h3 id="selected-meal-name">Название блюда</h3>
+                            <p id="selected-meal-description">Описание блюда</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="popular-dishes" id="popular-dishes">
+                    <!-- Popular dishes will be loaded here -->
+                </div>
+            </section>
+
+            <div class="error-message" id="error-message">
+                Произошла ошибка при загрузке данных. Пожалуйста, попробуйте позже.
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Ищем идеальные сочетания для вашего блюда...</p>
+            </div>
+
+            <section class="recommendations" id="recommendations">
+                <h2 class="section-title">Рекомендуемые напитки</h2>
+                <div class="recommendation-cards" id="drink-cards">
+                    <!-- Карточки напитков будут добавляться здесь -->
+                </div>
+            </section>
+        </section>
+
+        <!-- Секция каталога блюд -->
+        <section id="catalog-section" class="catalog-section">
+            <h2 class="section-title">Каталог блюд</h2>
+            
+            <div class="catalog-filters" id="catalog-filters">
+                <!-- Фильтры будут добавляться здесь -->
+            </div>
+
+            <div class="catalog-grid" id="catalog-grid">
+                <!-- Карточки блюд будут добавляться здесь -->
+            </div>
+        </section>
+
+        <!-- Секция "О проекте" -->
+        <section id="about-section" class="about-section">
+            <h2 class="section-title">О проекте</h2>
+            <div class="about-content">
+                <div class="about-card">
+                    <i class="fas fa-wine-glass-alt"></i>
+                    <h3>Как это работает?</h3>
+                    <p>Наша система использует онтологическую модель сочетаний, основанную на экспертных знаниях сомелье и кулинарных традициях.</p>
+                </div>
+                <div class="about-card">
+                    <i class="fas fa-brain"></i>
+                    <h3>Умный подбор</h3>
+                    <p>Алгоритм анализирует не только название блюда, но и его категорию, способ приготовления и ключевые ингредиенты.</p>
+                </div>
+                <div class="about-card">
+                    <i class="fas fa-database"></i>
+                    <h3>База знаний</h3>
+                    <p>Более 500 проверенных сочетаний блюд и напитков, постоянно обновляемая база данных.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Модальное окно информации о напитке -->
+    <div class="modal" id="drink-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2 class="modal-title" id="modal-drink-name">Название напитка</h2>
+            
+            <div class="modal-image" id="modal-drink-image">
+                <!-- Изображение напитка -->
+            </div>
+            
+            <div class="modal-info">
+                <div class="modal-info-item">
+                    <strong>Описание:</strong>
+                    <span id="modal-drink-description">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Объем:</strong>
+                    <span id="modal-drink-volume">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Крепость:</strong>
+                    <span id="modal-drink-strength">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Страна:</strong>
+                    <span id="modal-drink-country">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Тип:</strong>
+                    <span id="modal-drink-type">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Цена:</strong>
+                    <span id="modal-drink-price">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <strong>Сочетается с:</strong>
+                    <span id="modal-drink-pairing">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 Вкусные сочетания. Все права защищены.</p>
+            <p class="footer-info">Проект для подбора идеальных напитков к блюдам</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
