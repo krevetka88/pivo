@@ -16,7 +16,8 @@ const REAL_PAIRINGS = {
   'ролл': ['Саке', 'Рислинг (сухой)', 'Совиньон Блан'],
   'цезарь': ['Шардоне (легкое)', 'Совиньон Блан', 'Просекко'],
   'капрезе': ['Совиньон Блан', 'Пино Гриджио', 'Просекко'],
-  'греческий салат': ['Совиньон Блан', 'Розовое вино'],
+  // для греческого салата жёстко фиксируем лёгкие белые/игристые
+  'греческий салат': ['Совиньон Блан', 'Пино Гриджио', 'Просекко'],
   'паста': ['Кьянти', 'Барбера', 'Санджовезе'],
   'пицца': ['Кьянти', 'Санджовезе', 'Ламбруско (сухое)'],
   'бургер': ['Зинфандель', 'Американский IPA', 'Портер'],
@@ -646,10 +647,13 @@ function displayMealsInCatalog(meals) {
   });
 }
 
+// при клике из каталога сразу подбираем напитки, без повторного поиска
 function selectMealFromCatalog(meal) {
   showSection('main');
   document.getElementById('meal-search').value = meal.name;
-  selectMeal(meal);
+  if (typeof window.selectMeal === 'function') {
+    window.selectMeal(meal);
+  }
   document.getElementById('recommendations').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -786,9 +790,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // берём случайный поднабор блюд для блока "популярные"
+  function getRandomMeals(source, count) {
+    const copy = source.slice();
+    const result = [];
+    const max = Math.min(count, copy.length);
+
+    for (let i = 0; i < max; i++) {
+      const idx = Math.floor(Math.random() * copy.length);
+      result.push(copy[idx]);
+      copy.splice(idx, 1);
+    }
+
+    return result;
+  }
+
   function displayPopularDishes() {
     popularDishes.innerHTML = '';
-    const popularMeals = allMeals.slice(0, 8);
+    const popularMeals = getRandomMeals(allMeals, 8);
 
     popularMeals.forEach(meal => {
       const dishTag = document.createElement('div');
@@ -835,6 +854,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelector('.section-title').textContent = `Идеальные напитки для "${meal.name}" (${recommendedDrinks.length} найдено)`;
   }
+
+  // делаем функцию выбора блюда доступной глобально, чтобы её мог вызывать selectMealFromCatalog
+  window.selectMeal = selectMeal;
 
   // автодополнение
   mealSearch.addEventListener('input', function () {
@@ -954,4 +976,3 @@ document.addEventListener('DOMContentLoaded', function () {
   // стартуем загрузку данных
   loadAllData();
 });
-
