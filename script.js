@@ -16,6 +16,7 @@ const REAL_PAIRINGS = {
   'ролл': ['Саке', 'Рислинг (сухой)', 'Совиньон Блан'],
   'цезарь': ['Шардоне (легкое)', 'Совиньон Блан', 'Просекко'],
   'капрезе': ['Совиньон Блан', 'Пино Гриджио', 'Просекко'],
+  'оливье': ['Классическая водка', 'Игристое брют', 'Совиньон Блан'],
   // для греческого салата жёстко фиксируем лёгкие белые/игристые
   'греческий салат': ['Совиньон Блан', 'Пино Гриджио', 'Просекко'],
   'паста': ['Кьянти', 'Барбера', 'Санджовезе'],
@@ -232,13 +233,25 @@ function getStyleTagsForDrinkName(drinkName) {
     fallbackCategory = 'beer';
   }
 
-  // ПРОЧЕЕ
+   // ПРОЧЕЕ
   else if (s.includes('сидр')) {
     fallbackCategory = 'cider';
   } else if (s.includes('саке')) {
     fallbackCategory = 'sake';
   } else if (s.includes('вермут')) {
     fallbackCategory = 'vermouth';
+  } else if (s.includes('водка')) {
+    fallbackCategory = 'vodka';
+  } else if (s.includes('виски') || s.includes('whisky') || s.includes('whiskey')) {
+    fallbackCategory = 'whiskey';
+  } else if (s.includes('коньяк')) {
+    fallbackCategory = 'cognac';
+  } else if (s.includes('ром')) {
+    fallbackCategory = 'rum';
+  } else if (s.includes('ликёр') || s.includes('ликер') || s.includes('liqueur')) {
+    fallbackCategory = 'liquor';
+  } else if (s.includes('сок')) {
+    fallbackCategory = 'juice';
   }
 
   // Общий резерв
